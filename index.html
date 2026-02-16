@@ -1,271 +1,439 @@
-<script>
-    // --- LÓGICA DE DADOS (CONECTADA À API VERCEL) ---
-    let implants = [];
-    let currentImageData = "";
-    
-    // Elementos UI
-    const grid = document.getElementById('implantsGrid');
-    const initialState = document.getElementById('initialState');
-    const emptyState = document.getElementById('emptyState');
-    const searchInput = document.getElementById('searchInput');
-    const loadingIndicator = document.createElement('div'); // Indicador simples de loading
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mriSafe | Clinical Database</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-effect { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); }
+        .status-Safe { border-top: 5px solid #10b981; }
+        .status-Conditional { border-top: 5px solid #f59e0b; }
+        .status-Unsafe { border-top: 5px solid #ef4444; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-[#f1f5f9] text-slate-900 min-h-screen">
 
-    // Configuração do Loading
-    loadingIndicator.className = "text-center py-10 text-teal-600 font-bold hidden";
-    loadingIndicator.innerHTML = '<i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i> Carregando base de dados...';
-    grid.parentNode.insertBefore(loadingIndicator, grid);
+    <header class="sticky top-0 z-40 w-full border-b border-blue-100 glass-effect">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="flex items-center gap-2 text-blue-600">
+                    <div class="bg-blue-600 p-2 rounded-lg text-white">
+                        <i data-lucide="shield-check" class="w-6 h-6"></i>
+                    </div>
+                    <h1 class="text-2xl font-extrabold tracking-tight">mri<span class="text-slate-500 font-light">Safe</span></h1>
+                </div>
+                
+                <div class="flex flex-1 max-w-3xl gap-2">
+                    <div class="relative flex-1">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                        <input autocomplete="off" type="text" id="searchInput" 
+                            placeholder="Buscar por nome, fabricante ou modelo..." 
+                            class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm">
+                    </div>
+                    
+                    <select id="categorySelect" onchange="handleSearch()" 
+                        class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="todos">Todas Categorias</option>
+                        <option value="cardiaco">Cardíaco</option>
+                        <option value="neurologico">Neurológico</option>
+                        <option value="vascular">Vascular</option>
+                        <option value="ortopedico">Ortopédico</option>
+                        <option value="coclear">Coclear/Auditivo</option>
+                    </select>
+                </div>
 
-    // 1. CARREGAR DADOS (GET)
-    async function fetchImplants() {
-        try {
-            loadingIndicator.classList.remove('hidden');
-            initialState.classList.add('hidden');
+                <button onclick="openFormModal()" class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-200">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    Novo Registro
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-10">
+        <div id="initialState" class="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-300">
+            <div class="bg-blue-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="database" class="w-12 h-12 text-blue-500"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-slate-800">Base de Dados Técnica</h2>
+            <p class="text-slate-500 mt-2 max-w-md mx-auto italic font-medium">Pesquise para visualizar as especificações de segurança RM, limites de gradiente e SAR.</p>
+        </div>
+
+        <div id="implantsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 hidden"></div>
+
+        <div id="emptyState" class="hidden text-center py-20">
+            <i data-lucide="alert-triangle" class="w-12 h-12 text-amber-400 mx-auto mb-4"></i>
+            <p class="text-slate-500 font-medium">Nenhum implante corresponde aos critérios de pesquisa.</p>
+        </div>
+    </main>
+
+    <div id="formModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] shadow-2xl overflow-hidden flex flex-col">
+            <div class="p-6 border-b flex justify-between items-center bg-slate-50">
+                <h2 id="modalTitle" class="text-xl font-bold text-slate-800">Registrar Novo Dispositivo</h2>
+                <button onclick="closeFormModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x"></i></button>
+            </div>
             
-            const response = await fetch('/api/db');
-            if (!response.ok) throw new Error('Falha na API');
-            
-            implants = await response.json();
-            
-            loadingIndicator.classList.add('hidden');
-            handleSearch(); // Renderiza os dados
-        } catch (error) {
-            console.error("Erro:", error);
-            loadingIndicator.innerHTML = "Erro ao carregar dados. Verifique a conexão.";
+            <form id="implantForm" class="overflow-y-auto p-8 custom-scroll">
+                <input type="hidden" id="editId">
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="md:col-span-2">
+                        <h3 class="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4">1. Identificação</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">NOME DO IMPLANTE</label>
+                                <input type="text" id="name" required class="w-full p-3 bg-slate-50 border rounded-xl outline-none focus:border-blue-500 transition">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">FABRICANTE</label>
+                                    <input type="text" id="manufacturer" required class="w-full p-3 bg-slate-50 border rounded-xl">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">MODELO / REF</label>
+                                    <input type="text" id="modelRef" class="w-full p-3 bg-slate-50 border rounded-xl">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-dashed flex flex-col items-center justify-center">
+                        <label class="block text-xs font-bold text-slate-500 mb-2">IMAGEM DO DISPOSITIVO</label>
+                        <div id="imagePreview" class="w-full h-32 bg-slate-200 rounded-lg mb-2 overflow-hidden flex items-center justify-center text-slate-400">
+                            <i data-lucide="image" class="w-8 h-8"></i>
+                        </div>
+                        <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                        <button type="button" onclick="document.getElementById('imageUpload').click()" class="text-xs font-bold text-blue-600 hover:underline">Carregar Foto</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-blue-50/50 p-6 rounded-2xl">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">STATUS RM</label>
+                        <select id="status" class="w-full p-3 bg-white border rounded-xl font-bold">
+                            <option value="Safe" class="text-green-600">MRI Safe</option>
+                            <option value="Conditional" class="text-amber-600">MRI Conditional</option>
+                            <option value="Unsafe" class="text-red-600">MRI Unsafe</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">CATEGORIA</label>
+                        <select id="category" class="w-full p-3 bg-white border rounded-xl">
+                            <option value="cardiaco">Cardíaco</option>
+                            <option value="neurologico">Neurológico</option>
+                            <option value="vascular">Vascular</option>
+                            <option value="ortopedico">Ortopédico</option>
+                            <option value="coclear">Coclear/Auditivo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h3 class="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4">2. Especificações de Segurança</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">FORÇA DO CAMPO (Ex: 1.5T/3.0T)</label>
+                        <input type="text" id="fieldStrength" class="w-full p-3 bg-slate-50 border rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">LIMITE SAR (W/kg)</label>
+                        <input type="text" id="sarLimit" class="w-full p-3 bg-slate-50 border rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">LIMITE GRADIENTE (T/m/s)</label>
+                        <input type="text" id="gradientLimit" class="w-full p-3 bg-slate-50 border rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">PERÍODO DE ESPERA (Pós-cirurgia)</label>
+                        <input type="text" id="waitPeriod" class="w-full p-3 bg-slate-50 border rounded-xl">
+                    </div>
+                </div>
+
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">CONDIÇÕES ESPECÍFICAS</label>
+                        <textarea id="specificConditions" rows="2" class="w-full p-3 bg-slate-50 border rounded-xl"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">OBSERVAÇÕES / NOTAS TÉCNICAS</label>
+                        <textarea id="observations" rows="2" class="w-full p-3 bg-slate-50 border rounded-xl"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">URL DE REFERÊNCIA (Fabricante/Estudo)</label>
+                        <input type="url" id="refUrl" placeholder="https://..." class="w-full p-3 bg-slate-50 border rounded-xl">
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-6 border-t">
+                    <button type="button" onclick="closeFormModal()" class="flex-1 px-4 py-4 font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition">Descartar</button>
+                    <button type="submit" class="flex-1 px-4 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-200 transition">Salvar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div id="detailContent" class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden">
+            </div>
+    </div>
+
+    <script>
+        let implants = JSON.parse(localStorage.getItem('mri_pro_data')) || [];
+        let currentImageData = "";
+
+        // UI Elements
+        const grid = document.getElementById('implantsGrid');
+        const initialState = document.getElementById('initialState');
+        const emptyState = document.getElementById('emptyState');
+        const searchInput = document.getElementById('searchInput');
+
+        // Image Handling
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                currentImageData = reader.result;
+                document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover">`;
+            };
+            if (file) reader.readAsDataURL(file);
+        });
+
+        function saveToStorage() {
+            localStorage.setItem('mri_pro_data', JSON.stringify(implants));
         }
-    }
 
-    // 2. SALVAR DADOS (POST)
-    async function saveToCloud() {
-        // Mostra feedback visual que está a salvar
-        const saveBtn = document.querySelector('button[type="submit"]');
-        const originalText = saveBtn.innerText;
-        saveBtn.innerText = "SALVANDO...";
-        saveBtn.disabled = true;
+        function handleSearch() {
+            const term = searchInput.value.trim().toLowerCase();
+            const cat = document.getElementById('categorySelect').value;
 
-        try {
-            const response = await fetch('/api/db', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(implants)
+            if (term.length === 0) {
+                grid.classList.add('hidden');
+                initialState.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                return;
+            }
+
+            const filtered = implants.filter(imp => {
+                const matchesText = imp.name.toLowerCase().includes(term) || 
+                                   imp.manufacturer.toLowerCase().includes(term) ||
+                                   (imp.modelRef && imp.modelRef.toLowerCase().includes(term));
+                const matchesCat = cat === 'todos' || imp.category === cat;
+                return matchesText && matchesCat;
             });
 
-            if (!response.ok) throw new Error('Erro ao salvar');
-            
-            alert('Dados sincronizados com sucesso!');
-        } catch (error) {
-            alert('Erro ao salvar na nuvem.');
-            console.error(error);
-        } finally {
-            saveBtn.innerText = originalText;
-            saveBtn.disabled = false;
-        }
-    }
-
-    // --- MANIPULAÇÃO DE IMAGEM ---
-    document.getElementById('imageUpload').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        // Aviso: Gists têm limite de tamanho. Imagens grandes podem quebrar.
-        // Idealmente, redimensione aqui ou use URLs externas.
-        if (file && file.size > 1000000) { 
-            alert("A imagem é muito grande para o Gist. Tente uma imagem menor que 1MB.");
-            return;
+            renderGrid(filtered);
         }
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            currentImageData = reader.result;
-            document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover">`;
-        };
-        if (file) reader.readAsDataURL(file);
-    });
+        function renderGrid(data) {
+            initialState.classList.add('hidden');
+            grid.classList.remove('hidden');
+            grid.innerHTML = '';
 
-    // --- FUNÇÕES CRUD ---
+            if (data.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
 
-    function handleSearch() {
-        const term = searchInput.value.trim().toLowerCase();
-        const cat = document.getElementById('categorySelect').value;
-
-        // Se estiver vazio e for o carregamento inicial, mostra todos ou estado inicial
-        if (implants.length === 0) {
-             grid.classList.add('hidden');
-             emptyState.classList.remove('hidden');
-             return;
+            emptyState.classList.add('hidden');
+            data.forEach(imp => {
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all cursor-pointer group status-${imp.status}`;
+                card.onclick = (e) => {
+                    if(!e.target.closest('button')) openDetailModal(imp.id);
+                };
+                
+                card.innerHTML = `
+                    <div class="p-5">
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="text-[10px] font-extrabold uppercase tracking-tighter px-2 py-1 rounded bg-slate-100 text-slate-500">${imp.category}</span>
+                            <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                                <button onclick="editImplant(${imp.id})" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                                <button onclick="deleteImplant(${imp.id})" class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-800 mb-1 leading-tight">${imp.name}</h3>
+                        <p class="text-slate-400 text-xs font-medium uppercase mb-4">${imp.manufacturer} | ${imp.modelRef || 'N/A'}</p>
+                        
+                        <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-50">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full ${imp.status === 'Safe' ? 'bg-green-500' : imp.status === 'Conditional' ? 'bg-amber-500' : 'bg-red-500'}"></div>
+                                <span class="text-xs font-bold text-slate-600">MRI ${imp.status}</span>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
         }
 
-        const filtered = implants.filter(imp => {
-            const matchesText = imp.name.toLowerCase().includes(term) || 
-                                imp.manufacturer.toLowerCase().includes(term) ||
-                                (imp.modelRef && imp.modelRef.toLowerCase().includes(term));
-            const matchesCat = cat === 'todos' || imp.category === cat;
-            return matchesText && matchesCat;
-        });
-
-        renderGrid(filtered);
-    }
-
-    function renderGrid(data) {
-        grid.classList.remove('hidden');
-        grid.innerHTML = '';
-
-        if (data.length === 0) {
-            emptyState.classList.remove('hidden');
-            return;
-        }
-
-        emptyState.classList.add('hidden');
-        data.forEach(imp => {
-            const card = document.createElement('div');
-            card.className = `bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer group status-${imp.status}`;
-            card.onclick = (e) => {
-                if(!e.target.closest('button')) openDetailModal(imp.id);
+        // CRUD
+        document.getElementById('implantForm').onsubmit = (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const newImplant = {
+                id: id ? parseInt(id) : Date.now(),
+                name: document.getElementById('name').value,
+                manufacturer: document.getElementById('manufacturer').value,
+                modelRef: document.getElementById('modelRef').value,
+                status: document.getElementById('status').value,
+                category: document.getElementById('category').value,
+                fieldStrength: document.getElementById('fieldStrength').value,
+                sarLimit: document.getElementById('sarLimit').value,
+                gradientLimit: document.getElementById('gradientLimit').value,
+                waitPeriod: document.getElementById('waitPeriod').value,
+                specificConditions: document.getElementById('specificConditions').value,
+                observations: document.getElementById('observations').value,
+                refUrl: document.getElementById('refUrl').value,
+                image: currentImageData
             };
+
+            if (id) {
+                const index = implants.findIndex(i => i.id === parseInt(id));
+                implants[index] = newImplant;
+            } else {
+                implants.push(newImplant);
+            }
+
+            saveToStorage();
+            closeFormModal();
+            handleSearch();
+        };
+
+        function deleteImplant(id) {
+            if (confirm('Deseja realmente excluir este registro técnico?')) {
+                implants = implants.filter(i => i.id !== id);
+                saveToStorage();
+                handleSearch();
+            }
+        }
+
+        function editImplant(id) {
+            const imp = implants.find(i => i.id === id);
+            document.getElementById('editId').value = imp.id;
+            document.getElementById('name').value = imp.name;
+            document.getElementById('manufacturer').value = imp.manufacturer;
+            document.getElementById('modelRef').value = imp.modelRef;
+            document.getElementById('status').value = imp.status;
+            document.getElementById('category').value = imp.category;
+            document.getElementById('fieldStrength').value = imp.fieldStrength;
+            document.getElementById('sarLimit').value = imp.sarLimit;
+            document.getElementById('gradientLimit').value = imp.gradientLimit;
+            document.getElementById('waitPeriod').value = imp.waitPeriod;
+            document.getElementById('specificConditions').value = imp.specificConditions;
+            document.getElementById('observations').value = imp.observations;
+            document.getElementById('refUrl').value = imp.refUrl;
+            currentImageData = imp.image || "";
             
-            card.innerHTML = `
-                <div class="p-7">
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-slate-100 text-slate-500">${imp.category}</span>
-                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="editImplant(${imp.id})" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                            <button onclick="deleteImplant(${imp.id})" class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            if(currentImageData) {
+                document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover">`;
+            }
+
+            document.getElementById('modalTitle').innerText = "Editar Registro Técnico";
+            openFormModal();
+        }
+
+        // Modals Logic
+        function openFormModal() {
+            document.getElementById('formModal').classList.remove('hidden');
+            document.getElementById('formModal').classList.add('flex');
+        }
+
+        function closeFormModal() {
+            document.getElementById('formModal').classList.add('hidden');
+            document.getElementById('formModal').classList.remove('flex');
+            document.getElementById('implantForm').reset();
+            document.getElementById('imagePreview').innerHTML = `<i data-lucide="image" class="w-8 h-8"></i>`;
+            currentImageData = "";
+            lucide.createIcons();
+        }
+
+        function openDetailModal(id) {
+            const imp = implants.find(i => i.id === id);
+            const content = document.getElementById('detailContent');
+            const statusColor = imp.status === 'Safe' ? 'text-green-600' : imp.status === 'Conditional' ? 'text-amber-600' : 'text-red-600';
+            
+            content.innerHTML = `
+                <div class="relative h-48 bg-slate-900 flex items-center justify-center overflow-hidden">
+                    ${imp.image ? `<img src="${imp.image}" class="w-full h-full object-cover opacity-60">` : `<i data-lucide="shield" class="w-16 h-16 text-white/20"></i>`}
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent"></div>
+                    <button onclick="closeDetailModal()" class="absolute top-4 right-4 p-2 bg-white/20 rounded-full text-white hover:bg-white/40"><i data-lucide="x"></i></button>
+                    <div class="absolute bottom-6 left-8">
+                        <span class="text-[10px] font-bold text-blue-300 uppercase tracking-widest">${imp.category}</span>
+                        <h2 class="text-3xl font-bold text-white">${imp.name}</h2>
+                    </div>
+                </div>
+                <div class="p-8">
+                    <div class="flex gap-8 mb-8 border-b pb-6">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Fabricante</p>
+                            <p class="font-bold text-slate-700">${imp.manufacturer}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Modelo/Ref</p>
+                            <p class="font-bold text-slate-700">${imp.modelRef || '---'}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Segurança RM</p>
+                            <p class="font-bold ${statusColor}">MRI ${imp.status}</p>
                         </div>
                     </div>
-                    <h3 class="font-extrabold text-xl text-slate-800 mb-1 leading-tight group-hover:text-teal-600 transition-colors">${imp.name}</h3>
-                    <p class="text-slate-400 text-[11px] font-bold uppercase mb-6">${imp.manufacturer} | ${imp.modelRef || 'REF N/A'}</p>
-                    
-                    <div class="flex items-center justify-between pt-5 border-t border-slate-50">
-                        <div class="flex items-center gap-2">
-                            <div class="w-2.5 h-2.5 rounded-full ${imp.status === 'Safe' ? 'bg-green-500' : imp.status === 'Conditional' ? 'bg-amber-500' : 'bg-red-500'}"></div>
-                            <span class="text-[11px] font-black text-slate-600 uppercase tracking-tighter italic">MRI ${imp.status}</span>
+
+                    <div class="grid grid-cols-2 gap-y-6 gap-x-12 mb-8">
+                        <div>
+                            <p class="text-[10px] font-bold text-blue-500 uppercase">Força do Campo</p>
+                            <p class="text-sm text-slate-600 font-medium">${imp.fieldStrength || 'Não especificado'}</p>
                         </div>
-                        <i data-lucide="chevron-right" class="w-5 h-5 text-slate-200 group-hover:text-teal-500 transition-all group-hover:translate-x-1"></i>
+                        <div>
+                            <p class="text-[10px] font-bold text-blue-500 uppercase">Limite SAR</p>
+                            <p class="text-sm text-slate-600 font-medium">${imp.sarLimit || '---'}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-blue-500 uppercase">Limite Gradiente</p>
+                            <p class="text-sm text-slate-600 font-medium">${imp.gradientLimit || '---'}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-blue-500 uppercase">Espera Pós-Cirurg.</p>
+                            <p class="text-sm text-slate-600 font-medium">${imp.waitPeriod || 'Nenhuma'}</p>
+                        </div>
                     </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <p class="text-[10px] font-bold text-blue-600 uppercase mb-1">Condições Específicas</p>
+                            <p class="text-xs text-slate-700 leading-relaxed">${imp.specificConditions || 'Sem condições especiais listadas.'}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Observações</p>
+                            <p class="text-xs text-slate-600">${imp.observations || 'Nenhuma observação adicional.'}</p>
+                        </div>
+                    </div>
+
+                    ${imp.refUrl ? `
+                    <a href="${imp.refUrl}" target="_blank" class="mt-8 flex items-center justify-center gap-2 w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition">
+                        <i data-lucide="external-link" class="w-4 h-4"></i> ACESSAR FONTE DE REFERÊNCIA
+                    </a>` : ''}
                 </div>
             `;
-            grid.appendChild(card);
-        });
-        lucide.createIcons();
-    }
-
-    document.getElementById('implantForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('editId').value;
-        const newImplant = {
-            id: id ? parseInt(id) : Date.now(),
-            name: document.getElementById('name').value,
-            manufacturer: document.getElementById('manufacturer').value,
-            modelRef: document.getElementById('modelRef').value,
-            status: document.getElementById('status').value,
-            category: document.getElementById('category').value,
-            fieldStrength: document.getElementById('fieldStrength').value,
-            sarLimit: document.getElementById('sarLimit').value,
-            gradientLimit: document.getElementById('gradientLimit').value,
-            waitPeriod: document.getElementById('waitPeriod').value,
-            specificConditions: document.getElementById('specificConditions').value,
-            refUrl: document.getElementById('refUrl').value,
-            image: currentImageData
-        };
-
-        if (id) {
-            const index = implants.findIndex(i => i.id === parseInt(id));
-            implants[index] = newImplant;
-        } else {
-            implants.push(newImplant);
+            
+            document.getElementById('detailModal').classList.remove('hidden');
+            document.getElementById('detailModal').classList.add('flex');
+            lucide.createIcons();
         }
 
-        // Alteração Principal: Salvar na Cloud
-        await saveToCloud();
-        
-        closeFormModal();
-        handleSearch();
-    };
-
-    async function deleteImplant(id) {
-        if (confirm('Eliminar este registo técnico permanentemente?')) {
-            implants = implants.filter(i => i.id !== id);
-            await saveToCloud(); // Atualiza a cloud
-            handleSearch();
-        }
-    }
-
-    function editImplant(id) {
-        const imp = implants.find(i => i.id === id);
-        document.getElementById('editId').value = imp.id;
-        document.getElementById('name').value = imp.name;
-        document.getElementById('manufacturer').value = imp.manufacturer;
-        document.getElementById('modelRef').value = imp.modelRef;
-        document.getElementById('status').value = imp.status;
-        document.getElementById('category').value = imp.category;
-        document.getElementById('fieldStrength').value = imp.fieldStrength;
-        document.getElementById('sarLimit').value = imp.sarLimit;
-        document.getElementById('gradientLimit').value = imp.gradientLimit;
-        document.getElementById('waitPeriod').value = imp.waitPeriod;
-        document.getElementById('specificConditions').value = imp.specificConditions;
-        document.getElementById('refUrl').value = imp.refUrl;
-        currentImageData = imp.image || "";
-        
-        if(currentImageData) {
-            document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover">`;
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+            document.getElementById('detailModal').classList.remove('flex');
         }
 
-        document.getElementById('modalTitle').innerText = "Editar Registo Técnico";
-        openFormModal();
-    }
-
-    // Funções Modais (UI)
-    function openFormModal() { document.getElementById('formModal').classList.replace('hidden', 'flex'); }
-    function closeFormModal() {
-        document.getElementById('formModal').classList.replace('flex', 'hidden');
-        document.getElementById('implantForm').reset();
-        document.getElementById('editId').value = "";
-        document.getElementById('modalTitle').innerText = "Registrar Novo Dispositivo";
-        document.getElementById('imagePreview').innerHTML = `<i data-lucide="image" class="w-10 h-10"></i>`;
-        currentImageData = "";
+        searchInput.addEventListener('input', handleSearch);
         lucide.createIcons();
-    }
-
-    function openDetailModal(id) {
-        const imp = implants.find(i => i.id === id);
-        const content = document.getElementById('detailContent');
-        const statusColor = imp.status === 'Safe' ? 'text-green-600' : imp.status === 'Conditional' ? 'text-amber-600' : 'text-red-600';
-        
-        content.innerHTML = `
-            <div class="relative h-64 bg-slate-900 flex items-center justify-center overflow-hidden">
-                ${imp.image ? `<img src="${imp.image}" class="w-full h-full object-cover opacity-50 blur-[2px]">` : `<div class="absolute inset-0 bg-gradient-to-br from-teal-900 to-blue-900 opacity-60"></div>`}
-                <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
-                <button onclick="closeDetailModal()" class="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-all"><i data-lucide="x"></i></button>
-                <div class="absolute bottom-8 left-10 right-10">
-                    <span class="text-[10px] font-black text-teal-400 uppercase tracking-[0.3em] mb-2 block">${imp.category}</span>
-                    <h2 class="text-4xl font-extrabold text-white leading-tight">${imp.name}</h2>
-                </div>
-            </div>
-            <div class="p-10">
-                <div class="flex flex-wrap gap-10 mb-10 border-b border-slate-100 pb-8">
-                    <div><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Fabricante</p><p class="font-extrabold text-slate-700 text-lg">${imp.manufacturer}</p></div>
-                    <div><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Modelo / REF</p><p class="font-extrabold text-slate-700 text-lg">${imp.modelRef || '---'}</p></div>
-                    <div><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Segurança RM</p><p class="font-black ${statusColor} text-lg uppercase italic">MRI ${imp.status}</p></div>
-                </div>
-                <div class="grid grid-cols-2 gap-y-8 gap-x-12 mb-10">
-                    <div><div class="flex items-center gap-2 mb-1 text-teal-600"><i data-lucide="magnet" class="w-4 h-4"></i><p class="text-[10px] font-black uppercase tracking-widest">Campo Estático</p></div><p class="text-base text-slate-600 font-bold">${imp.fieldStrength || 'Não especificado'}</p></div>
-                    <div><div class="flex items-center gap-2 mb-1 text-teal-600"><i data-lucide="activity" class="w-4 h-4"></i><p class="text-[10px] font-black uppercase tracking-widest">Limite SAR</p></div><p class="text-base text-slate-600 font-bold">${imp.sarLimit || 'Normal Mode'}</p></div>
-                    <div><div class="flex items-center gap-2 mb-1 text-teal-600"><i data-lucide="zap" class="w-4 h-4"></i><p class="text-[10px] font-black uppercase tracking-widest">Gradiente Espacial</p></div><p class="text-base text-slate-600 font-bold">${imp.gradientLimit || '---'}</p></div>
-                    <div><div class="flex items-center gap-2 mb-1 text-teal-600"><i data-lucide="clock" class="w-4 h-4"></i><p class="text-[10px] font-black uppercase tracking-widest">Período de Espera</p></div><p class="text-base text-slate-600 font-bold">${imp.waitPeriod || 'Imediato'}</p></div>
-                </div>
-                <div class="bg-slate-50 p-6 rounded-[1.5rem] border border-slate-100 mb-8">
-                    <p class="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest">Observações Técnicas Cruciais</p>
-                    <p class="text-sm text-slate-700 leading-relaxed font-medium">${imp.specificConditions || 'Sem notas técnicas adicionais.'}</p>
-                </div>
-                ${imp.refUrl ? `<a href="${imp.refUrl}" target="_blank" class="flex items-center justify-center gap-3 w-full py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-xs font-black tracking-widest transition-all shadow-lg shadow-teal-100 uppercase"><i data-lucide="external-link" class="w-4 h-4"></i> Verificar Fonte Original</a>` : ''}
-            </div>
-        `;
-        document.getElementById('detailModal').classList.replace('hidden', 'flex');
-        lucide.createIcons();
-    }
-    function closeDetailModal() { document.getElementById('detailModal').classList.replace('flex', 'hidden'); }
-
-    // INICIALIZAÇÃO
-    searchInput.addEventListener('input', handleSearch);
-    lucide.createIcons();
-    
-    // Iniciar carregando os dados da nuvem
-    fetchImplants();
-</script>
+    </script>
+</body>
+</html>
