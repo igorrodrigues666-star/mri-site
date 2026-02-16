@@ -3,268 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>mriSafe | Clinical Database</title>
+    <title>MRI Safety Database</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .glass-effect { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); }
-        .status-Safe { border-top: 5px solid #10b981; }
-        .status-Conditional { border-top: 5px solid #f59e0b; }
-        .status-Unsafe { border-top: 5px solid #ef4444; }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .status-Safe { border-left: 8px solid #22c55e; }
+        .status-Conditional { border-left: 8px solid #f59e0b; }
+        .status-Unsafe { border-left: 8px solid #ef4444; }
     </style>
 </head>
-<body class="bg-[#f1f5f9] text-slate-900 min-h-screen">
+<body class="bg-[#f8fafc] text-slate-900 min-h-screen">
 
-    <header class="sticky top-0 z-40 w-full border-b border-blue-100 glass-effect">
-        <div class="max-w-7xl mx-auto px-4 py-4">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div class="flex items-center gap-2 text-blue-600">
-                    <div class="bg-blue-600 p-2 rounded-lg text-white">
-                        <i data-lucide="shield-check" class="w-6 h-6"></i>
-                    </div>
-                    <h1 class="text-2xl font-extrabold tracking-tight">mri<span class="text-slate-500 font-light">Safe</span></h1>
-                </div>
-                
-                <div class="flex flex-1 max-w-3xl gap-2">
-                    <div class="relative flex-1">
-                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
-                        <input autocomplete="off" type="text" id="searchInput" 
-                            placeholder="Buscar por nome, fabricante ou modelo..." 
-                            class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm">
-                    </div>
-                    
-                    <select id="categorySelect" onchange="handleSearch()" 
-                        class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                        <option value="todos">Todas Categorias</option>
-                        <option value="cardiaco">Cardíaco</option>
-                        <option value="neurologico">Neurológico</option>
-                        <option value="vascular">Vascular</option>
-                        <option value="ortopedico">Ortopédico</option>
-                        <option value="coclear">Coclear/Auditivo</option>
-                    </select>
-                </div>
+    <div class="fixed top-4 right-4 z-[60] flex gap-2">
+        <button id="loginBtn" onclick="openLoginModal()" class="bg-slate-800/80 hover:bg-slate-900 backdrop-blur-md text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg transition-all flex items-center gap-2">
+            <i data-lucide="lock" class="w-3 h-3"></i> Área Restrita
+        </button>
+        <button id="logoutBtn" onclick="doLogout()" class="hidden bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg transition-all flex items-center gap-2">
+            <i data-lucide="log-out" class="w-3 h-3"></i> Sair do Painel
+        </button>
+    </div>
 
-                <button onclick="openFormModal()" class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-200">
-                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
-                    Novo Registro
-                </button>
+    <div id="loginModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md hidden items-center justify-center p-4 z-[100]">
+        <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl">
+            <div class="bg-teal-50 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                <i data-lucide="shield-check" class="text-teal-600"></i>
+            </div>
+            <h2 class="text-2xl font-black mb-2 text-slate-800">Admin Login</h2>
+            <p class="text-slate-500 text-sm mb-6">Introduza as credenciais para gerir implantes.</p>
+            <div class="space-y-4">
+                <input type="text" id="loginUser" placeholder="Utilizador" class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:border-teal-500">
+                <input type="password" id="loginPass" placeholder="Senha" class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:border-teal-500">
+                <button onclick="doLogin()" class="w-full py-4 bg-teal-600 text-white font-black rounded-2xl hover:bg-teal-700 transition-all">ENTRAR</button>
+                <button onclick="closeLoginModal()" class="w-full text-slate-400 text-xs font-bold uppercase mt-2">Cancelar</button>
             </div>
         </div>
-    </header>
+    </div>
 
-    <main class="max-w-7xl mx-auto px-4 py-10">
-        <div id="initialState" class="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-300">
-            <div class="bg-blue-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i data-lucide="database" class="w-12 h-12 text-blue-500"></i>
+    <main class="max-w-7xl mx-auto px-6 py-12">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16">
+            <div>
+                <h1 class="text-5xl font-black tracking-tighter text-slate-900 mb-2">MRI<span class="text-teal-600">SAFE</span>.</h1>
+                <p class="text-slate-400 font-medium">Base de Dados Técnica de Implantes e Dispositivos</p>
             </div>
-            <h2 class="text-3xl font-bold text-slate-800">Base de Dados Técnica</h2>
-            <p class="text-slate-500 mt-2 max-w-md mx-auto italic font-medium">Pesquise para visualizar as especificações de segurança RM, limites de gradiente e SAR.</p>
+            <button onclick="openFormModal()" class="hidden bg-teal-600 hover:bg-teal-700 text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-teal-100 transition-all flex items-center gap-3">
+                <i data-lucide="plus-circle"></i> Novo Registro
+            </button>
         </div>
 
-        <div id="implantsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 hidden"></div>
+        <div class="bg-white p-4 rounded-[2.5rem] shadow-xl shadow-slate-200/50 flex flex-col md:flex-row gap-4 mb-12 border border-white">
+            <div class="relative flex-grow">
+                <i data-lucide="search" class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5"></i>
+                <input type="text" id="searchInput" placeholder="Pesquisar por nome, fabricante ou referência..." class="w-full pl-14 pr-6 py-4 bg-slate-50 rounded-[1.8rem] outline-none focus:ring-2 ring-teal-500/20 transition-all text-slate-600 font-medium">
+            </div>
+            <select id="categorySelect" onchange="handleSearch()" class="md:w-64 px-6 py-4 bg-slate-50 rounded-[1.8rem] outline-none border-none text-slate-500 font-bold appearance-none">
+                <option value="todos">Todas Categorias</option>
+                <option value="Cardiovascular">Cardiovascular</option>
+                <option value="Ortopedia">Ortopedia</option>
+                <option value="Neurologia">Neurologia</option>
+                <option value="Outros">Outros</option>
+            </select>
+        </div>
 
-        <div id="emptyState" class="hidden text-center py-20">
-            <i data-lucide="alert-triangle" class="w-12 h-12 text-amber-400 mx-auto mb-4"></i>
-            <p class="text-slate-500 font-medium">Nenhum implante corresponde aos critérios de pesquisa.</p>
+        <div id="implantsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+
+        <div id="emptyState" class="hidden text-center py-24">
+            <div class="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
+                <i data-lucide="database-zap" class="w-10 h-10"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800">Nenhum resultado encontrado</h3>
+            <p class="text-slate-400">Tente ajustar os termos da sua pesquisa.</p>
         </div>
     </main>
 
-    <div id="formModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] shadow-2xl overflow-hidden flex flex-col">
-            <div class="p-6 border-b flex justify-between items-center bg-slate-50">
-                <h2 id="modalTitle" class="text-xl font-bold text-slate-800">Registrar Novo Dispositivo</h2>
-                <button onclick="closeFormModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x"></i></button>
+    <div id="formModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-[70]">
+        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-8 border-b flex justify-between items-center bg-slate-50">
+                <h2 id="modalTitle" class="text-2xl font-black text-slate-800">Registrar Novo Dispositivo</h2>
+                <button onclick="closeFormModal()" class="p-3 hover:bg-slate-200 rounded-full transition-colors"><i data-lucide="x"></i></button>
             </div>
-            
-            <form id="implantForm" class="overflow-y-auto p-8 custom-scroll">
+            <form id="implantForm" class="p-8 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-6">
                 <input type="hidden" id="editId">
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="md:col-span-2">
-                        <h3 class="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4">1. Identificação</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-1">NOME DO IMPLANTE</label>
-                                <input type="text" id="name" required class="w-full p-3 bg-slate-50 border rounded-xl outline-none focus:border-blue-500 transition">
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-500 mb-1">FABRICANTE</label>
-                                    <input type="text" id="manufacturer" required class="w-full p-3 bg-slate-50 border rounded-xl">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-500 mb-1">MODELO / REF</label>
-                                    <input type="text" id="modelRef" class="w-full p-3 bg-slate-50 border rounded-xl">
-                                </div>
-                            </div>
+                <div class="md:col-span-2 flex justify-center mb-4">
+                    <label class="relative w-40 h-40 bg-slate-100 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-200 transition-all overflow-hidden">
+                        <input type="file" id="imageUpload" class="hidden" accept="image/*">
+                        <div id="imagePreview" class="text-slate-400 flex flex-col items-center">
+                            <i data-lucide="image" class="w-10 h-10 mb-2"></i>
+                            <span class="text-[10px] font-bold uppercase">Foto</span>
                         </div>
-                    </div>
-                    <div class="bg-slate-50 p-4 rounded-2xl border border-dashed flex flex-col items-center justify-center">
-                        <label class="block text-xs font-bold text-slate-500 mb-2">IMAGEM DO DISPOSITIVO</label>
-                        <div id="imagePreview" class="w-full h-32 bg-slate-200 rounded-lg mb-2 overflow-hidden flex items-center justify-center text-slate-400">
-                            <i data-lucide="image" class="w-8 h-8"></i>
-                        </div>
-                        <input type="file" id="imageUpload" accept="image/*" class="hidden">
-                        <button type="button" onclick="document.getElementById('imageUpload').click()" class="text-xs font-bold text-blue-600 hover:underline">Carregar Foto</button>
-                    </div>
+                    </label>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-blue-50/50 p-6 rounded-2xl">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">STATUS RM</label>
-                        <select id="status" class="w-full p-3 bg-white border rounded-xl font-bold">
-                            <option value="Safe" class="text-green-600">MRI Safe</option>
-                            <option value="Conditional" class="text-amber-600">MRI Conditional</option>
-                            <option value="Unsafe" class="text-red-600">MRI Unsafe</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">CATEGORIA</label>
-                        <select id="category" class="w-full p-3 bg-white border rounded-xl">
-                            <option value="cardiaco">Cardíaco</option>
-                            <option value="neurologico">Neurológico</option>
-                            <option value="vascular">Vascular</option>
-                            <option value="ortopedico">Ortopédico</option>
-                            <option value="coclear">Coclear/Auditivo</option>
-                        </select>
-                    </div>
-                </div>
-
-                <h3 class="text-sm font-bold text-blue-600 uppercase tracking-widest mb-4">2. Especificações de Segurança</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">FORÇA DO CAMPO (Ex: 1.5T/3.0T)</label>
-                        <input type="text" id="fieldStrength" class="w-full p-3 bg-slate-50 border rounded-xl">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">LIMITE SAR (W/kg)</label>
-                        <input type="text" id="sarLimit" class="w-full p-3 bg-slate-50 border rounded-xl">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">LIMITE GRADIENTE (T/m/s)</label>
-                        <input type="text" id="gradientLimit" class="w-full p-3 bg-slate-50 border rounded-xl">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">PERÍODO DE ESPERA (Pós-cirurgia)</label>
-                        <input type="text" id="waitPeriod" class="w-full p-3 bg-slate-50 border rounded-xl">
-                    </div>
-                </div>
-
-                <div class="space-y-4 mb-6">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">CONDIÇÕES ESPECÍFICAS</label>
-                        <textarea id="specificConditions" rows="2" class="w-full p-3 bg-slate-50 border rounded-xl"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">OBSERVAÇÕES / NOTAS TÉCNICAS</label>
-                        <textarea id="observations" rows="2" class="w-full p-3 bg-slate-50 border rounded-xl"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">URL DE REFERÊNCIA (Fabricante/Estudo)</label>
-                        <input type="url" id="refUrl" placeholder="https://..." class="w-full p-3 bg-slate-50 border rounded-xl">
-                    </div>
-                </div>
-
-                <div class="flex gap-3 pt-6 border-t">
-                    <button type="button" onclick="closeFormModal()" class="flex-1 px-4 py-4 font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition">Descartar</button>
-                    <button type="submit" class="flex-1 px-4 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-200 transition">Salvar Registro</button>
+                <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1">Nome do Dispositivo</label><input type="text" id="name" required class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 ring-teal-500/10 border border-slate-100"></div>
+                <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1">Fabricante</label><input type="text" id="manufacturer" required class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 ring-teal-500/10 border border-slate-100"></div>
+                <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1">Modelo / REF</label><input type="text" id="modelRef" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 ring-teal-500/10 border border-slate-100"></div>
+                <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1">Segurança RM</label><select id="status" class="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 font-bold"><option value="Safe">MRI Safe</option><option value="Conditional">MRI Conditional</option><option value="Unsafe">MRI Unsafe</option></select></div>
+                <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1">Categoria</label><select id="category" class="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 font-bold"><option value="Cardiovascular">Cardiovascular</option><option value="Ortopedia">Ortopedia</option><option value="Neurologia">Neurologia</option><option value="Outros">Outros</option></select></div>
+                <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1">Campo Magnético (T)</label><input type="text" id="fieldStrength" placeholder="Ex: 1.5T e 3T" class="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100"></div>
+                <div class="md:col-span-2"><label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1">Condições Específicas / Observações</label><textarea id="specificConditions" rows="4" class="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100"></textarea></div>
+                <div class="md:col-span-2 flex gap-4 pt-4">
+                    <button type="submit" class="flex-grow py-5 bg-teal-600 text-white rounded-[1.5rem] font-black shadow-xl shadow-teal-100 hover:bg-teal-700 transition-all">SALVAR REGISTRO</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div id="detailModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden items-center justify-center p-4 z-50">
-        <div id="detailContent" class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden">
-            </div>
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden items-center justify-center p-4 z-[80]">
+        <div id="detailContent" class="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in duration-300"></div>
     </div>
 
     <script>
-        let implants = JSON.parse(localStorage.getItem('mri_pro_data')) || [];
+        let implants = [];
+        let isAdmin = false;
         let currentImageData = "";
 
         // UI Elements
         const grid = document.getElementById('implantsGrid');
-        const initialState = document.getElementById('initialState');
         const emptyState = document.getElementById('emptyState');
         const searchInput = document.getElementById('searchInput');
 
-        // Image Handling
-        document.getElementById('imageUpload').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                currentImageData = reader.result;
-                document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover">`;
-            };
-            if (file) reader.readAsDataURL(file);
-        });
+        // 1. INICIALIZAÇÃO
+        window.onload = () => {
+            const token = localStorage.getItem('mri_admin_token');
+            if (token) {
+                isAdmin = true;
+                showAdminUI();
+            }
+            fetchImplants();
+        };
 
-        function saveToStorage() {
-            localStorage.setItem('mri_pro_data', JSON.stringify(implants));
+        function showAdminUI() {
+            document.getElementById('loginBtn').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            const addBtn = document.querySelector('button[onclick="openFormModal()"]');
+            if (addBtn) addBtn.classList.remove('hidden');
+            handleSearch();
         }
 
-        function handleSearch() {
-            const term = searchInput.value.trim().toLowerCase();
-            const cat = document.getElementById('categorySelect').value;
+        // 2. LOGIN E LOGOUT
+        async function doLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
 
-            if (term.length === 0) {
-                grid.classList.add('hidden');
-                initialState.classList.remove('hidden');
-                emptyState.classList.add('hidden');
-                return;
+            try {
+                const res = await fetch('/api/db?action=login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user, pass })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('mri_admin_token', data.token);
+                    isAdmin = true;
+                    closeLoginModal();
+                    showAdminUI();
+                } else {
+                    alert("Credenciais erradas!");
+                }
+            } catch (e) {
+                alert("Erro ao conectar com a API");
             }
+        }
 
+        function doLogout() {
+            localStorage.removeItem('mri_admin_token');
+            location.reload();
+        }
+
+        function openLoginModal() { document.getElementById('loginModal').classList.replace('hidden', 'flex'); }
+        function closeLoginModal() { document.getElementById('loginModal').classList.replace('flex', 'hidden'); }
+
+        // 3. API - CARREGAR E SALVAR
+        async function fetchImplants() {
+            try {
+                const response = await fetch('/api/db');
+                implants = await response.json();
+                handleSearch();
+            } catch (error) {
+                console.error("Erro ao buscar dados:", error);
+            }
+        }
+
+        async function saveToCloud() {
+            const token = localStorage.getItem('mri_admin_token');
+            if (!token) return alert("Não autorizado.");
+
+            try {
+                const response = await fetch('/api/db', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'authorization': token 
+                    },
+                    body: JSON.stringify(implants)
+                });
+                if (!response.ok) throw new Error();
+                alert("Sincronizado com sucesso!");
+            } catch (e) {
+                alert("Erro ao salvar dados na nuvem.");
+            }
+        }
+
+        // 4. LÓGICA DE PESQUISA E GRID
+        function handleSearch() {
+            const term = searchInput.value.toLowerCase();
+            const cat = document.getElementById('categorySelect').value;
             const filtered = implants.filter(imp => {
-                const matchesText = imp.name.toLowerCase().includes(term) || 
-                                   imp.manufacturer.toLowerCase().includes(term) ||
-                                   (imp.modelRef && imp.modelRef.toLowerCase().includes(term));
+                const matchesText = imp.name.toLowerCase().includes(term) || imp.manufacturer.toLowerCase().includes(term);
                 const matchesCat = cat === 'todos' || imp.category === cat;
                 return matchesText && matchesCat;
             });
-
             renderGrid(filtered);
         }
 
         function renderGrid(data) {
-            initialState.classList.add('hidden');
-            grid.classList.remove('hidden');
             grid.innerHTML = '';
-
             if (data.length === 0) {
                 emptyState.classList.remove('hidden');
                 return;
             }
-
             emptyState.classList.add('hidden');
             data.forEach(imp => {
                 const card = document.createElement('div');
-                card.className = `bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all cursor-pointer group status-${imp.status}`;
-                card.onclick = (e) => {
-                    if(!e.target.closest('button')) openDetailModal(imp.id);
-                };
-                
+                card.className = `bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-2xl transition-all cursor-pointer group status-${imp.status}`;
+                card.onclick = (e) => { if(!e.target.closest('button')) openDetailModal(imp.id); };
                 card.innerHTML = `
-                    <div class="p-5">
-                        <div class="flex justify-between items-start mb-3">
-                            <span class="text-[10px] font-extrabold uppercase tracking-tighter px-2 py-1 rounded bg-slate-100 text-slate-500">${imp.category}</span>
-                            <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                                <button onclick="editImplant(${imp.id})" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                                <button onclick="deleteImplant(${imp.id})" class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    <div class="p-7">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-[9px] font-black uppercase px-3 py-1 bg-slate-100 rounded-full">${imp.category}</span>
+                            <div class="flex gap-1 ${isAdmin ? '' : 'hidden'}">
+                                <button onclick="editImplant(${imp.id})" class="p-2 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                                <button onclick="deleteImplant(${imp.id})" class="p-2 bg-red-50 text-red-600 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                             </div>
                         </div>
-                        <h3 class="font-bold text-lg text-slate-800 mb-1 leading-tight">${imp.name}</h3>
-                        <p class="text-slate-400 text-xs font-medium uppercase mb-4">${imp.manufacturer} | ${imp.modelRef || 'N/A'}</p>
-                        
-                        <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-50">
-                            <div class="flex items-center gap-2">
-                                <div class="w-3 h-3 rounded-full ${imp.status === 'Safe' ? 'bg-green-500' : imp.status === 'Conditional' ? 'bg-amber-500' : 'bg-red-500'}"></div>
-                                <span class="text-xs font-bold text-slate-600">MRI ${imp.status}</span>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                        <h3 class="font-bold text-lg mb-1">${imp.name}</h3>
+                        <p class="text-slate-400 text-xs mb-4">${imp.manufacturer}</p>
+                        <div class="flex items-center gap-2 pt-4 border-t text-[10px] font-black uppercase text-slate-500">
+                            <div class="w-2 h-2 rounded-full ${imp.status === 'Safe' ? 'bg-green-500' : imp.status === 'Conditional' ? 'bg-amber-500' : 'bg-red-500'}"></div>
+                            MRI ${imp.status}
                         </div>
                     </div>
                 `;
@@ -273,8 +250,8 @@
             lucide.createIcons();
         }
 
-        // CRUD
-        document.getElementById('implantForm').onsubmit = (e) => {
+        // 5. CRUD
+        document.getElementById('implantForm').onsubmit = async (e) => {
             e.preventDefault();
             const id = document.getElementById('editId').value;
             const newImplant = {
@@ -285,31 +262,26 @@
                 status: document.getElementById('status').value,
                 category: document.getElementById('category').value,
                 fieldStrength: document.getElementById('fieldStrength').value,
-                sarLimit: document.getElementById('sarLimit').value,
-                gradientLimit: document.getElementById('gradientLimit').value,
-                waitPeriod: document.getElementById('waitPeriod').value,
                 specificConditions: document.getElementById('specificConditions').value,
-                observations: document.getElementById('observations').value,
-                refUrl: document.getElementById('refUrl').value,
                 image: currentImageData
             };
 
             if (id) {
-                const index = implants.findIndex(i => i.id === parseInt(id));
-                implants[index] = newImplant;
+                const idx = implants.findIndex(i => i.id === parseInt(id));
+                implants[idx] = newImplant;
             } else {
                 implants.push(newImplant);
             }
 
-            saveToStorage();
+            await saveToCloud();
             closeFormModal();
             handleSearch();
         };
 
-        function deleteImplant(id) {
-            if (confirm('Deseja realmente excluir este registro técnico?')) {
+        async function deleteImplant(id) {
+            if (confirm("Eliminar permanentemente?")) {
                 implants = implants.filter(i => i.id !== id);
-                saveToStorage();
+                await saveToCloud();
                 handleSearch();
             }
         }
@@ -319,120 +291,61 @@
             document.getElementById('editId').value = imp.id;
             document.getElementById('name').value = imp.name;
             document.getElementById('manufacturer').value = imp.manufacturer;
-            document.getElementById('modelRef').value = imp.modelRef;
             document.getElementById('status').value = imp.status;
             document.getElementById('category').value = imp.category;
             document.getElementById('fieldStrength').value = imp.fieldStrength;
-            document.getElementById('sarLimit').value = imp.sarLimit;
-            document.getElementById('gradientLimit').value = imp.gradientLimit;
-            document.getElementById('waitPeriod').value = imp.waitPeriod;
             document.getElementById('specificConditions').value = imp.specificConditions;
-            document.getElementById('observations').value = imp.observations;
-            document.getElementById('refUrl').value = imp.refUrl;
             currentImageData = imp.image || "";
-            
-            if(currentImageData) {
-                document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover">`;
-            }
-
-            document.getElementById('modalTitle').innerText = "Editar Registro Técnico";
+            document.getElementById('modalTitle').innerText = "Editar Registro";
             openFormModal();
         }
 
-        // Modals Logic
-        function openFormModal() {
-            document.getElementById('formModal').classList.remove('hidden');
-            document.getElementById('formModal').classList.add('flex');
-        }
+        // 6. IMAGENS, MODAIS E OUTROS
+        document.getElementById('imageUpload').onchange = (e) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                currentImageData = reader.result;
+                document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover">`;
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        };
 
-        function closeFormModal() {
-            document.getElementById('formModal').classList.add('hidden');
-            document.getElementById('formModal').classList.remove('flex');
+        function openFormModal() { document.getElementById('formModal').classList.replace('hidden', 'flex'); }
+        function closeFormModal() { 
+            document.getElementById('formModal').classList.replace('flex', 'hidden'); 
             document.getElementById('implantForm').reset();
-            document.getElementById('imagePreview').innerHTML = `<i data-lucide="image" class="w-8 h-8"></i>`;
+            document.getElementById('editId').value = "";
             currentImageData = "";
+            document.getElementById('imagePreview').innerHTML = `<i data-lucide="image" class="w-10 h-10"></i>`;
             lucide.createIcons();
         }
 
         function openDetailModal(id) {
             const imp = implants.find(i => i.id === id);
             const content = document.getElementById('detailContent');
-            const statusColor = imp.status === 'Safe' ? 'text-green-600' : imp.status === 'Conditional' ? 'text-amber-600' : 'text-red-600';
-            
             content.innerHTML = `
-                <div class="relative h-48 bg-slate-900 flex items-center justify-center overflow-hidden">
-                    ${imp.image ? `<img src="${imp.image}" class="w-full h-full object-cover opacity-60">` : `<i data-lucide="shield" class="w-16 h-16 text-white/20"></i>`}
-                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent"></div>
-                    <button onclick="closeDetailModal()" class="absolute top-4 right-4 p-2 bg-white/20 rounded-full text-white hover:bg-white/40"><i data-lucide="x"></i></button>
-                    <div class="absolute bottom-6 left-8">
-                        <span class="text-[10px] font-bold text-blue-300 uppercase tracking-widest">${imp.category}</span>
-                        <h2 class="text-3xl font-bold text-white">${imp.name}</h2>
+                <div class="p-10">
+                    <div class="flex justify-between items-start mb-6">
+                        <h2 class="text-3xl font-black">${imp.name}</h2>
+                        <button onclick="closeDetailModal()"><i data-lucide="x"></i></button>
                     </div>
-                </div>
-                <div class="p-8">
-                    <div class="flex gap-8 mb-8 border-b pb-6">
-                        <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Fabricante</p>
-                            <p class="font-bold text-slate-700">${imp.manufacturer}</p>
+                    <div class="space-y-4 text-slate-600">
+                        <p><strong>Fabricante:</strong> ${imp.manufacturer}</p>
+                        <p><strong>Segurança:</strong> MRI ${imp.status}</p>
+                        <p><strong>Campo:</strong> ${imp.fieldStrength || '---'}</p>
+                        <div class="bg-slate-50 p-4 rounded-xl mt-4">
+                            <strong>Notas Técnicas:</strong><br>${imp.specificConditions || 'Sem notas.'}
                         </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Modelo/Ref</p>
-                            <p class="font-bold text-slate-700">${imp.modelRef || '---'}</p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Segurança RM</p>
-                            <p class="font-bold ${statusColor}">MRI ${imp.status}</p>
-                        </div>
+                        ${imp.image ? `<img src="${imp.image}" class="mt-4 rounded-2xl w-full h-48 object-cover">` : ''}
                     </div>
-
-                    <div class="grid grid-cols-2 gap-y-6 gap-x-12 mb-8">
-                        <div>
-                            <p class="text-[10px] font-bold text-blue-500 uppercase">Força do Campo</p>
-                            <p class="text-sm text-slate-600 font-medium">${imp.fieldStrength || 'Não especificado'}</p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-blue-500 uppercase">Limite SAR</p>
-                            <p class="text-sm text-slate-600 font-medium">${imp.sarLimit || '---'}</p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-blue-500 uppercase">Limite Gradiente</p>
-                            <p class="text-sm text-slate-600 font-medium">${imp.gradientLimit || '---'}</p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-blue-500 uppercase">Espera Pós-Cirurg.</p>
-                            <p class="text-sm text-slate-600 font-medium">${imp.waitPeriod || 'Nenhuma'}</p>
-                        </div>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                            <p class="text-[10px] font-bold text-blue-600 uppercase mb-1">Condições Específicas</p>
-                            <p class="text-xs text-slate-700 leading-relaxed">${imp.specificConditions || 'Sem condições especiais listadas.'}</p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Observações</p>
-                            <p class="text-xs text-slate-600">${imp.observations || 'Nenhuma observação adicional.'}</p>
-                        </div>
-                    </div>
-
-                    ${imp.refUrl ? `
-                    <a href="${imp.refUrl}" target="_blank" class="mt-8 flex items-center justify-center gap-2 w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition">
-                        <i data-lucide="external-link" class="w-4 h-4"></i> ACESSAR FONTE DE REFERÊNCIA
-                    </a>` : ''}
                 </div>
             `;
-            
-            document.getElementById('detailModal').classList.remove('hidden');
-            document.getElementById('detailModal').classList.add('flex');
+            document.getElementById('detailModal').classList.replace('hidden', 'flex');
             lucide.createIcons();
         }
+        function closeDetailModal() { document.getElementById('detailModal').classList.replace('flex', 'hidden'); }
 
-        function closeDetailModal() {
-            document.getElementById('detailModal').classList.add('hidden');
-            document.getElementById('detailModal').classList.remove('flex');
-        }
-
-        searchInput.addEventListener('input', handleSearch);
+        searchInput.oninput = handleSearch;
         lucide.createIcons();
     </script>
 </body>
