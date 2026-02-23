@@ -203,32 +203,33 @@
             location.reload();
         }
 
-        function handleSearch() {
-            const term = searchInput.value.toLowerCase().trim();
-            const cat = document.getElementById('categorySelect').value;
+       function handleSearch() {
+    const term = searchInput.value.toLowerCase().trim();
+    const cat = document.getElementById('categorySelect').value;
 
-            // Se vazio, limpa a grelha
-            if (term === "" && cat === "todos") {
-                grid.innerHTML = '';
-                initialState.classList.remove('hidden');
-                emptyState.classList.add('hidden');
-                return;
-            }
+    if (term === "" && cat === "todos") {
+        grid.innerHTML = '';
+        initialState.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        return;
+    }
 
-            initialState.classList.add('hidden');
-            
-            const filtered = implants.filter(imp => {
-                const name = imp.name ? imp.name.toLowerCase() : "";
-                const manufacturer = imp.manufacturer ? imp.manufacturer.toLowerCase() : "";
-                const model = imp.modelRef ? imp.modelRef.toLowerCase() : "";
+    initialState.classList.add('hidden');
+    
+    const filtered = implants.filter(imp => {
+        // Garantimos que o campo existe antes de pesquisar (evita o erro undefined)
+        const name = (imp.name || "").toString().toLowerCase();
+        const manufacturer = (imp.manufacturer || "").toString().toLowerCase();
+        const model = (imp.modelRef || "").toString().toLowerCase();
 
-                const matchesText = name.includes(term) || manufacturer.includes(term) || model.includes(term);
-                const matchesCat = cat === 'todos' || imp.category === cat;
-                return matchesText && matchesCat;
-            });
+        const matchesText = name.includes(term) || manufacturer.includes(term) || model.includes(term);
+        const matchesCat = cat === 'todos' || imp.category === cat;
+        
+        return matchesText && matchesCat;
+    });
 
-            renderGrid(filtered);
-        }
+    renderGrid(filtered);
+}
 
         function renderGrid(data) {
             grid.innerHTML = '';
@@ -419,3 +420,4 @@
     </script>
 </body>
 </html>
+
