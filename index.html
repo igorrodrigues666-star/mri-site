@@ -145,7 +145,9 @@
     </div>
 
     <script>
-        const SCRIPT_URL = https://script.google.com/macros/s/AKfycbyNz8la6CCm_vl0I1ErJHQMiMWFCVGqS5AXheJxp76k37iDJcz8rSBuxfPRNK_MLE-A1w/exec
+        // CORREÇÃO AQUI: Adicionei as aspas (' ') no link abaixo
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyNz8la6CCm_vl0I1ErJHQMiMWFCVGqS5AXheJxp76k37iDJcz8rSBuxfPRNK_MLE-A1w/exec';
+        
         let implants = [];
         let isAdmin = false;
         let currentImageData = "";
@@ -155,6 +157,7 @@
         const initialState = document.getElementById('initialState');
         const searchInput = document.getElementById('searchInput');
 
+        // Quando a página carrega
         window.onload = () => {
             const token = localStorage.getItem('mri_admin_token');
             if (token) {
@@ -162,6 +165,7 @@
                 showAdminUI();
             }
             fetchImplants();
+            lucide.createIcons(); // Garante que os ícones carregam logo
         };
 
         function showAdminUI() {
@@ -171,27 +175,28 @@
         }
 
         async function fetchImplants() {
-    try {
-        const response = await fetch(SCRIPT_URL);
-        implants = await response.json();
-        console.log("Dados carregados com sucesso!");
-    } catch (error) { 
-        console.error("Erro ao ler dados do Google Sheets:", error); 
-    }
-}
+            try {
+                const response = await fetch(SCRIPT_URL);
+                implants = await response.json();
+                console.log("Dados carregados com sucesso!");
+            } catch (error) { 
+                console.error("Erro ao ler dados do Google Sheets:", error); 
+                alert("Erro ao conectar com a base de dados. Verifique a consola.");
+            }
+        }
 
-       async function doLogin() {
-    const user = document.getElementById('loginUser').value;
-    const pass = document.getElementById('loginPass').value;
+        async function doLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
 
-    // Define aqui o utilizador e senha que queres usar
-    if (user === "admin" && pass === "123456789") {
-        localStorage.setItem('mri_admin_token', 'autenticado');
-        location.reload(); // Recarrega para mostrar os botões de Admin
-    } else {
-        alert("Acesso Negado: Utilizador ou senha incorretos.");
-    }
-}
+            // Utilizador: admin | Senha: 123
+            if (user === "admin" && pass === "123") {
+                localStorage.setItem('mri_admin_token', 'autenticado');
+                location.reload(); 
+            } else {
+                alert("Acesso Negado: Utilizador ou senha incorretos.");
+            }
+        }
 
         function doLogout() {
             localStorage.removeItem('mri_admin_token');
@@ -202,7 +207,7 @@
             const term = searchInput.value.toLowerCase().trim();
             const cat = document.getElementById('categorySelect').value;
 
-            // Se nada foi pesquisado ou selecionado, volta ao estado inicial
+            // Se vazio, limpa a grelha
             if (term === "" && cat === "todos") {
                 grid.innerHTML = '';
                 initialState.classList.remove('hidden');
@@ -213,9 +218,11 @@
             initialState.classList.add('hidden');
             
             const filtered = implants.filter(imp => {
-                const matchesText = imp.name.toLowerCase().includes(term) || 
-                                   imp.manufacturer.toLowerCase().includes(term) ||
-                                   (imp.modelRef && imp.modelRef.toLowerCase().includes(term));
+                const name = imp.name ? imp.name.toLowerCase() : "";
+                const manufacturer = imp.manufacturer ? imp.manufacturer.toLowerCase() : "";
+                const model = imp.modelRef ? imp.modelRef.toLowerCase() : "";
+
+                const matchesText = name.includes(term) || manufacturer.includes(term) || model.includes(term);
                 const matchesCat = cat === 'todos' || imp.category === cat;
                 return matchesText && matchesCat;
             });
@@ -262,12 +269,13 @@
             lucide.createIcons();
         }
 
-        // CRUD & Modals
+        // Funções de Modal e Login
         function openFormModal() { document.getElementById('formModal').classList.replace('hidden', 'flex'); }
         function closeFormModal() { 
             document.getElementById('formModal').classList.replace('flex', 'hidden'); 
             document.getElementById('implantForm').reset();
             document.getElementById('imagePreview').innerHTML = `<i data-lucide="camera" class="w-10 h-10"></i>`;
+            document.getElementById('editId').value = ""; // Limpa ID
             lucide.createIcons();
         }
 
@@ -275,21 +283,26 @@
         function closeLoginModal() { document.getElementById('loginModal').classList.replace('flex', 'hidden'); }
 
         async function saveToCloud() {
-    // Esta função envia toda a sua lista para a planilha
-    await fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors', // Importante para o Google aceitar
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(implants)
-    });
-    alert("Base de dados atualizada no Google Sheets!");
-}
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(implants)
+                });
+                alert("Base de dados atualizada no Google Sheets!");
+            } catch (e) {
+                alert("Erro ao salvar: " + e);
+            }
+        }
 
         document.getElementById('implantForm').onsubmit = async (e) => {
             e.preventDefault();
-            const id = document.getElementById('editId').value;
+            const idStr = document.getElementById('editId').value;
+            const id = idStr ? parseInt(idStr) : Date.now();
+            
             const newImp = {
-                id: id ? parseInt(id) : Date.now(),
+                id: id,
                 name: document.getElementById('name').value,
                 manufacturer: document.getElementById('manufacturer').value,
                 modelRef: document.getElementById('modelRef').value,
@@ -300,14 +313,16 @@
                 image: currentImageData
             };
 
-            if (id) {
-                const idx = implants.findIndex(i => i.id === parseInt(id));
-                implants[idx] = newImp;
-            } else { implants.push(newImp); }
+            if (idStr) {
+                const idx = implants.findIndex(i => i.id === id);
+                if (idx !== -1) implants[idx] = newImp;
+            } else { 
+                implants.push(newImp); 
+            }
 
             await saveToCloud();
             closeFormModal();
-            handleSearch();
+            handleSearch(); // Atualiza a lista visual
         };
 
         async function deleteImplant(id) {
@@ -320,21 +335,27 @@
 
         function editImplant(id) {
             const imp = implants.find(i => i.id === id);
+            if (!imp) return;
+            
             document.getElementById('editId').value = imp.id;
             document.getElementById('name').value = imp.name;
             document.getElementById('manufacturer').value = imp.manufacturer;
+            document.getElementById('modelRef').value = imp.modelRef || "";
             document.getElementById('status').value = imp.status;
             document.getElementById('category').value = imp.category;
-            document.getElementById('fieldStrength').value = imp.fieldStrength;
-            document.getElementById('specificConditions').value = imp.specificConditions;
+            document.getElementById('fieldStrength').value = imp.fieldStrength || "";
+            document.getElementById('specificConditions').value = imp.specificConditions || "";
+            
             currentImageData = imp.image || "";
-            if(imp.image) document.getElementById('imagePreview').innerHTML = `<img src="${imp.image}" class="w-full h-full object-cover">`;
+            if(imp.image) document.getElementById('imagePreview').innerHTML = `<img src="${imp.image}" class="w-full h-full object-cover rounded-xl">`;
+            
             openFormModal();
         }
 
         function openDetailModal(id) {
             const imp = implants.find(i => i.id === id);
             const content = document.getElementById('detailContent');
+            
             content.innerHTML = `
                 <div class="p-0">
                     <div class="h-48 bg-sky-900 relative">
@@ -384,18 +405,17 @@
         function closeDetailModal() { document.getElementById('detailModal').classList.replace('flex', 'hidden'); }
 
         document.getElementById('imageUpload').onchange = (e) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                currentImageData = reader.result;
-                document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover">`;
-            };
-            reader.readAsDataURL(e.target.files[0]);
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    currentImageData = reader.result;
+                    document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" class="w-full h-full object-cover rounded-xl">`;
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
         };
 
         searchInput.oninput = handleSearch;
-        lucide.createIcons();
     </script>
 </body>
 </html>
-
-
