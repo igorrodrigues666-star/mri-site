@@ -203,85 +203,85 @@
             location.reload();
         }
 
-       // FUNÇÃO DE PESQUISA CORRIGIDA E ROBUSTA
-       function handleSearch() {
-            // Se os dados ainda não carregaram, não faz nada
-            if (!implants || implants.length === 0) return;
+       // FUNÇÃO DE PESQUISA REFORÇADA (ANTI-ERRO)
+function handleSearch() {
+    if (!implants || implants.length === 0) return;
 
-            const term = (searchInput.value || "").toLowerCase().trim();
-            const cat = document.getElementById('categorySelect').value;
+    const term = (document.getElementById('searchInput').value || "").toLowerCase().trim();
+    const cat = document.getElementById('categorySelect').value;
 
-            // Se o campo de pesquisa estiver vazio e a categoria for 'todos', limpa a grelha
-            if (term === "" && cat === "todos") {
-                grid.innerHTML = '';
-                initialState.classList.remove('hidden');
-                emptyState.classList.add('hidden');
-                return;
-            }
+    // Se não houver pesquisa nem categoria, limpa a grelha e mostra estado inicial
+    if (term === "" && cat === "todos") {
+        grid.innerHTML = '';
+        initialState.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        return;
+    }
 
-            initialState.classList.add('hidden');
-            
-            const filtered = implants.filter(imp => {
-                // Conversão segura para string para evitar erros se o campo for número ou nulo
-                const name = String(imp.name || "").toLowerCase();
-                const manufacturer = String(imp.manufacturer || "").toLowerCase();
-                const model = String(imp.modelRef || "").toLowerCase();
+    initialState.classList.add('hidden');
+    
+    const filtered = implants.filter(imp => {
+        // CONVERSÃO FORÇADA PARA STRING (Evita que o erro do Sheets quebre o código)
+        const name = String(imp.name || "").toLowerCase();
+        const manufacturer = String(imp.manufacturer || "").toLowerCase();
+        const model = String(imp.modelRef || "").toLowerCase();
 
-                const matchesText = name.includes(term) || manufacturer.includes(term) || model.includes(term);
-                const matchesCat = cat === 'todos' || imp.category === cat;
-                
-                return matchesText && matchesCat;
-            });
+        const matchesText = name.includes(term) || manufacturer.includes(term) || model.includes(term);
+        const matchesCat = cat === 'todos' || String(imp.category) === cat;
+        
+        return matchesText && matchesCat;
+    });
 
-            renderGrid(filtered);
-        }
+    renderGrid(filtered);
+}
 
-        function renderGrid(data) {
-            grid.innerHTML = '';
-            
-            if (data.length === 0) {
-                emptyState.classList.remove('hidden');
-                return;
-            }
-            emptyState.classList.add('hidden');
+function renderGrid(data) {
+    grid.innerHTML = '';
+    
+    if (data.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+    }
+    emptyState.classList.add('hidden');
 
-            data.forEach(imp => {
-                const card = document.createElement('div');
-                
-                // LÓGICA DE CORES DOS CARTÕES
-                let bgClass = "bg-white border-slate-100"; // Default
-                if(imp.status === 'Safe') bgClass = "bg-emerald-50 border-emerald-100";
-                else if(imp.status === 'Conditional') bgClass = "bg-amber-50 border-amber-100";
-                else if(imp.status === 'Unsafe') bgClass = "bg-rose-50 border-rose-100";
+    data.forEach(imp => {
+        const card = document.createElement('div');
+        
+        // Lógica de Cores Suaves conforme pedido
+        let bgClass = "bg-white border-slate-100"; 
+        const statusClean = String(imp.status).trim().toLowerCase();
+        
+        if(statusClean === 'safe') bgClass = "bg-[#f0fdf4] border-emerald-100"; // Verde muito leve
+        else if(statusClean === 'conditional') bgClass = "bg-[#fffbeb] border-amber-100"; // Amarelo levezinho
+        else if(statusClean === 'unsafe') bgClass = "bg-[#fef2f2] border-rose-100"; // Vermelho leve
 
-                card.className = `${bgClass} rounded-3xl shadow-sm border overflow-hidden hover:shadow-xl transition-all cursor-pointer group`;
-                card.onclick = (e) => { if(!e.target.closest('button')) openDetailModal(imp.id); };
-                
-                card.innerHTML = `
-                    <div class="p-6">
-                        <div class="flex justify-between items-start mb-4">
-                            <span class="text-[9px] font-extrabold uppercase px-3 py-1.5 bg-white/60 text-slate-600 rounded-lg tracking-wider backdrop-blur-sm">${imp.category}</span>
-                            <div class="flex gap-1 ${isAdmin ? '' : 'hidden'}">
-                                <button onclick="editImplant(${imp.id})" class="p-2 hover:bg-sky-50 text-slate-400 hover:text-sky-600 rounded-lg transition-colors"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                                <button onclick="deleteImplant(${imp.id})" class="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                            </div>
-                        </div>
-                        <h3 class="font-bold text-slate-800 text-lg leading-tight mb-1 group-hover:text-sky-700 transition-colors">${imp.name}</h3>
-                        <p class="text-slate-500 text-xs font-medium mb-5">${imp.manufacturer}</p>
-                        
-                        <div class="flex items-center justify-between pt-4 border-t border-black/5">
-                            <div class="flex items-center gap-2">
-                                <div class="w-2.5 h-2.5 rounded-full ${imp.status === 'Safe' ? 'bg-emerald-500' : imp.status === 'Conditional' ? 'bg-amber-500' : 'bg-rose-500'}"></div>
-                                <span class="text-[10px] font-black uppercase tracking-tighter text-slate-700">MRI ${imp.status}</span>
-                            </div>
-                            <span class="text-[10px] font-bold text-slate-400">${imp.fieldStrength || ''}</span>
-                        </div>
+        card.className = `${bgClass} rounded-3xl shadow-sm border overflow-hidden hover:shadow-xl transition-all cursor-pointer group`;
+        card.onclick = (e) => { if(!e.target.closest('button')) openDetailModal(imp.id); };
+        
+        card.innerHTML = `
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-[9px] font-extrabold uppercase px-3 py-1.5 bg-white/60 text-slate-600 rounded-lg tracking-wider backdrop-blur-sm">${imp.category || 'Geral'}</span>
+                    <div class="flex gap-1 ${isAdmin ? '' : 'hidden'}">
+                        <button onclick="editImplant(${imp.id})" class="p-2 hover:bg-sky-50 text-slate-400 hover:text-sky-600 rounded-lg transition-colors"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
                     </div>
-                `;
-                grid.appendChild(card);
-            });
-            lucide.createIcons();
-        }
+                </div>
+                <h3 class="font-bold text-slate-800 text-lg leading-tight mb-1 group-hover:text-sky-700 transition-colors">${imp.name || 'Sem nome'}</h3>
+                <p class="text-slate-500 text-xs font-medium mb-5">${imp.manufacturer || 'Fabricante desconhecido'}</p>
+                
+                <div class="flex items-center justify-between pt-4 border-t border-black/5">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full ${statusClean === 'safe' ? 'bg-emerald-500' : statusClean === 'conditional' ? 'bg-amber-500' : 'bg-rose-500'}"></div>
+                        <span class="text-[10px] font-black uppercase tracking-tighter text-slate-700">MRI ${imp.status}</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-400">${imp.fieldStrength || ''}</span>
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+    lucide.createIcons();
+}
 
         // Funções de Modal e Formulário
         function openFormModal() { document.getElementById('formModal').classList.replace('hidden', 'flex'); }
@@ -453,3 +453,4 @@
     </script>
 </body>
 </html>
+
