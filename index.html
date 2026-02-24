@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -154,82 +155,86 @@
         let isAdmin = false;
         let currentImageData = "";
 
-let dataLoaded = false; // Esta variável impede que apague o Sheets por erro
+        const grid = document.getElementById('implantsGrid');
+        const emptyState = document.getElementById('emptyState');
+        const initialState = document.getElementById('initialState');
+        const searchInput = document.getElementById('searchInput');
 
-        window.onload = async () => {
+        window.onload = () => {
             const token = localStorage.getItem('mri_admin_token');
             if (token) {
                 isAdmin = true;
                 showAdminUI();
             }
-            await fetchImplants(); // Espera que o Sheets responda antes de deixar fazer nada
+            fetchImplants();
             lucide.createIcons();
         };
+
+        function showAdminUI() {
+            document.getElementById('loginBtn').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('adminActions').classList.remove('hidden');
+        }
 
         async function fetchImplants() {
             try {
                 const response = await fetch(SCRIPT_URL);
-                const data = await response.json();
-                if (data && Array.isArray(data)) {
-                    implants = data;
-                    dataLoaded = true; // Só aqui é que o sistema "liberta" a gravação
-                    console.log("Base de dados carregada com sucesso.");
-                }
+                implants = await response.json();
+                console.log("Dados carregados: ", implants.length);
             } catch (error) { 
-                console.error("Erro ao carregar dados:", error);
-                alert("AVISO: A base de dados não carregou. Não tente salvar novos dados agora.");
+                console.error("Erro ao ler dados do Google Sheets:", error); 
+                alert("Erro ao conectar com a base de dados. Verifique a consola.");
             }
         }
 
-        async function saveToCloud() {
-            // PROTEÇÃO DE OURO: Se a lista estiver vazia porque o Sheets não carregou, ele PARA aqui.
-            if (!dataLoaded || implants.length === 0) {
-                alert("ERRO DE SEGURANÇA: A lista está vazia ou não sincronizada. O sistema impediu a gravação para não apagar o seu Google Sheets.");
-                return;
-            }
+        async function doLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
 
-            try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(implants)
-                });
-                alert("Base de dados sincronizada com o Google Sheets!");
-            } catch (e) {
-                alert("Erro ao salvar: " + e);
+            if (user === "admin" && pass === "123") {
+                localStorage.setItem('mri_admin_token', 'autenticado');
+                location.reload(); 
+            } else {
+                alert("Acesso Negado: Utilizador ou senha incorretos.");
             }
         }
 
-        function handleSearch() {
-            if (!implants || implants.length === 0) return;
-
-            const term = (document.getElementById('searchInput').value || "").toLowerCase().trim();
-            const cat = document.getElementById('categorySelect').value;
-
-            if (term === "" && cat === "todos") {
-                grid.innerHTML = '';
-                initialState.classList.remove('hidden');
-                emptyState.classList.add('hidden');
-                return;
-            }
-
-            initialState.classList.add('hidden');
-            
-            const filtered = implants.filter(imp => {
-                // CONVERSÃO PARA STRING: Resolve o erro de pesquisar números vindos do Sheets
-                const name = String(imp.name || "").toLowerCase();
-                const manufacturer = String(imp.manufacturer || "").toLowerCase();
-                const model = String(imp.modelRef || "").toLowerCase();
-
-                const matchesText = name.includes(term) || manufacturer.includes(term) || model.includes(term);
-                const matchesCat = cat === 'todos' || String(imp.category) === cat;
-                
-                return matchesText && matchesCat;
-            });
-
-            renderGrid(filtered);
+        function doLogout() {
+            localStorage.removeItem('mri_admin_token');
+            location.reload();
         }
+
+       // FUNÇÃO DE PESQUISA REFORÇADA (ANTI-ERRO)
+function handleSearch() {
+    if (!implants || implants.length === 0) return;
+
+    const term = (document.getElementById('searchInput').value || "").toLowerCase().trim();
+    const cat = document.getElementById('categorySelect').value;
+
+    // Se não houver pesquisa nem categoria, limpa a grelha e mostra estado inicial
+    if (term === "" && cat === "todos") {
+        grid.innerHTML = '';
+        initialState.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        return;
+    }
+
+    initialState.classList.add('hidden');
+    
+    const filtered = implants.filter(imp => {
+        // CONVERSÃO FORÇADA PARA STRING (Evita que o erro do Sheets quebre o código)
+        const name = String(imp.name || "").toLowerCase();
+        const manufacturer = String(imp.manufacturer || "").toLowerCase();
+        const model = String(imp.modelRef || "").toLowerCase();
+
+        const matchesText = name.includes(term) || manufacturer.includes(term) || model.includes(term);
+        const matchesCat = cat === 'todos' || String(imp.category) === cat;
+        
+        return matchesText && matchesCat;
+    });
+
+    renderGrid(filtered);
+}
 
 function renderGrid(data) {
     grid.innerHTML = '';
@@ -449,5 +454,4 @@ function renderGrid(data) {
     </script>
 </body>
 </html>
-
 
