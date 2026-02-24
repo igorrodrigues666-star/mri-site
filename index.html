@@ -14,10 +14,6 @@
             background: radial-gradient(circle at top right, #f0f9ff 0%, #e0f2fe 100%);
         }
 
-        .status-Safe { border-top: 4px solid #10b981; }
-        .status-Conditional { border-top: 4px solid #f59e0b; }
-        .status-Unsafe { border-top: 4px solid #ef4444; }
-
         .search-shadow {
             box-shadow: 0 10px 40px -10px rgba(14, 165, 233, 0.2);
         }
@@ -52,13 +48,13 @@
             <div class="bg-white p-3 rounded-[2.5rem] search-shadow flex flex-col md:flex-row gap-2 border border-sky-50">
                 <div class="relative flex-grow">
                     <i data-lucide="search" class="absolute left-6 top-1/2 -translate-y-1/2 text-sky-400 w-5 h-5"></i>
-                    <input type="text" id="searchInput" placeholder="Pesquise por nome, marca ou referência..." 
+                    <input type="text" id="searchInput" onkeyup="handleSearch()" placeholder="Pesquise por nome, marca ou referência..." 
                            class="w-full pl-16 pr-6 py-5 bg-transparent rounded-[2rem] outline-none text-slate-700 font-medium placeholder:text-slate-300">
                 </div>
                 <div class="h-10 w-[1px] bg-slate-100 self-center hidden md:block"></div>
                 <select id="categorySelect" onchange="handleSearch()" 
                         class="md:w-60 px-8 py-5 bg-transparent rounded-[2rem] outline-none text-sky-700 font-bold appearance-none cursor-pointer">
-                    <option value="todos">Filtrar Categoria</option>
+                    <option value="todos">Todas Categorias</option>
                     <option value="Cardíaca">Cardíaca</option>
                     <option value="Vascular">Vascular</option>
                     <option value="Neurologia">Neurologia</option>
@@ -183,7 +179,7 @@
             try {
                 const response = await fetch(SCRIPT_URL);
                 implants = await response.json();
-                console.log("Dados carregados com sucesso!");
+                console.log("Dados carregados: ", implants.length);
             } catch (error) { 
                 console.error("Erro ao ler dados do Google Sheets:", error); 
                 alert("Erro ao conectar com a base de dados. Verifique a consola.");
@@ -207,10 +203,15 @@
             location.reload();
         }
 
+       // FUNÇÃO DE PESQUISA CORRIGIDA E ROBUSTA
        function handleSearch() {
-            const term = searchInput.value.toLowerCase().trim();
+            // Se os dados ainda não carregaram, não faz nada
+            if (!implants || implants.length === 0) return;
+
+            const term = (searchInput.value || "").toLowerCase().trim();
             const cat = document.getElementById('categorySelect').value;
 
+            // Se o campo de pesquisa estiver vazio e a categoria for 'todos', limpa a grelha
             if (term === "" && cat === "todos") {
                 grid.innerHTML = '';
                 initialState.classList.remove('hidden');
@@ -221,9 +222,10 @@
             initialState.classList.add('hidden');
             
             const filtered = implants.filter(imp => {
-                const name = (imp.name || "").toString().toLowerCase();
-                const manufacturer = (imp.manufacturer || "").toString().toLowerCase();
-                const model = (imp.modelRef || "").toString().toLowerCase();
+                // Conversão segura para string para evitar erros se o campo for número ou nulo
+                const name = String(imp.name || "").toLowerCase();
+                const manufacturer = String(imp.manufacturer || "").toLowerCase();
+                const model = String(imp.modelRef || "").toLowerCase();
 
                 const matchesText = name.includes(term) || manufacturer.includes(term) || model.includes(term);
                 const matchesCat = cat === 'todos' || imp.category === cat;
@@ -236,6 +238,7 @@
 
         function renderGrid(data) {
             grid.innerHTML = '';
+            
             if (data.length === 0) {
                 emptyState.classList.remove('hidden');
                 return;
@@ -244,27 +247,34 @@
 
             data.forEach(imp => {
                 const card = document.createElement('div');
-                card.className = `bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl transition-all cursor-pointer group status-${imp.status}`;
+                
+                // LÓGICA DE CORES DOS CARTÕES
+                let bgClass = "bg-white border-slate-100"; // Default
+                if(imp.status === 'Safe') bgClass = "bg-emerald-50 border-emerald-100";
+                else if(imp.status === 'Conditional') bgClass = "bg-amber-50 border-amber-100";
+                else if(imp.status === 'Unsafe') bgClass = "bg-rose-50 border-rose-100";
+
+                card.className = `${bgClass} rounded-3xl shadow-sm border overflow-hidden hover:shadow-xl transition-all cursor-pointer group`;
                 card.onclick = (e) => { if(!e.target.closest('button')) openDetailModal(imp.id); };
                 
                 card.innerHTML = `
                     <div class="p-6">
                         <div class="flex justify-between items-start mb-4">
-                            <span class="text-[9px] font-extrabold uppercase px-3 py-1.5 bg-sky-50 text-sky-600 rounded-lg tracking-wider">${imp.category}</span>
+                            <span class="text-[9px] font-extrabold uppercase px-3 py-1.5 bg-white/60 text-slate-600 rounded-lg tracking-wider backdrop-blur-sm">${imp.category}</span>
                             <div class="flex gap-1 ${isAdmin ? '' : 'hidden'}">
                                 <button onclick="editImplant(${imp.id})" class="p-2 hover:bg-sky-50 text-slate-400 hover:text-sky-600 rounded-lg transition-colors"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
                                 <button onclick="deleteImplant(${imp.id})" class="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                             </div>
                         </div>
                         <h3 class="font-bold text-slate-800 text-lg leading-tight mb-1 group-hover:text-sky-700 transition-colors">${imp.name}</h3>
-                        <p class="text-slate-400 text-xs font-medium mb-5">${imp.manufacturer}</p>
+                        <p class="text-slate-500 text-xs font-medium mb-5">${imp.manufacturer}</p>
                         
-                        <div class="flex items-center justify-between pt-4 border-t border-slate-50">
+                        <div class="flex items-center justify-between pt-4 border-t border-black/5">
                             <div class="flex items-center gap-2">
-                                <div class="w-2.5 h-2.5 rounded-full ${imp.status === 'Safe' ? 'bg-emerald-500' : imp.status === 'Conditional' ? 'bg-amber-500' : 'bg-rose-500 shadow-lg shadow-rose-200'}"></div>
-                                <span class="text-[10px] font-black uppercase tracking-tighter text-slate-600">MRI ${imp.status}</span>
+                                <div class="w-2.5 h-2.5 rounded-full ${imp.status === 'Safe' ? 'bg-emerald-500' : imp.status === 'Conditional' ? 'bg-amber-500' : 'bg-rose-500'}"></div>
+                                <span class="text-[10px] font-black uppercase tracking-tighter text-slate-700">MRI ${imp.status}</span>
                             </div>
-                            <span class="text-[10px] font-bold text-slate-300">${imp.fieldStrength || ''}</span>
+                            <span class="text-[10px] font-bold text-slate-400">${imp.fieldStrength || ''}</span>
                         </div>
                     </div>
                 `;
@@ -273,6 +283,7 @@
             lucide.createIcons();
         }
 
+        // Funções de Modal e Formulário
         function openFormModal() { document.getElementById('formModal').classList.replace('hidden', 'flex'); }
         function closeFormModal() { 
             document.getElementById('formModal').classList.replace('flex', 'hidden'); 
@@ -313,7 +324,7 @@
                 category: document.getElementById('category').value,
                 fieldStrength: document.getElementById('fieldStrength').value,
                 specificConditions: document.getElementById('specificConditions').value,
-                docLink: document.getElementById('docLink').value, // Salva o novo campo
+                docLink: document.getElementById('docLink').value,
                 image: currentImageData
             };
 
@@ -349,7 +360,7 @@
             document.getElementById('category').value = imp.category;
             document.getElementById('fieldStrength').value = imp.fieldStrength || "";
             document.getElementById('specificConditions').value = imp.specificConditions || "";
-            document.getElementById('docLink').value = imp.docLink || ""; // Carrega o link
+            document.getElementById('docLink').value = imp.docLink || "";
             
             currentImageData = imp.image || "";
             if(imp.image) document.getElementById('imagePreview').innerHTML = `<img src="${imp.image}" class="w-full h-full object-cover rounded-xl">`;
@@ -361,15 +372,20 @@
             const imp = implants.find(i => i.id === id);
             const content = document.getElementById('detailContent');
             
-            const statusColor = imp.status === 'Safe' ? 'text-emerald-600 bg-emerald-50' : imp.status === 'Conditional' ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50';
+            const statusColor = imp.status === 'Safe' ? 'text-emerald-600' : imp.status === 'Conditional' ? 'text-amber-600' : 'text-rose-600';
 
             content.innerHTML = `
                 <div class="p-0">
                     <div class="h-56 bg-sky-900 relative flex flex-col justify-end p-8">
                         ${imp.image ? `<img src="${imp.image}" class="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay">` : ''}
+                        
                         <button onclick="closeDetailModal()" class="absolute top-6 right-6 bg-white/20 hover:bg-white/40 p-2 rounded-full text-white transition-all z-20">
                             <i data-lucide="x"></i>
                         </button>
+
+                        <div class="absolute top-6 left-6 bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1 rounded-lg">
+                             <span class="text-white/80 text-[10px] font-bold uppercase tracking-widest">REF: ${imp.modelRef || 'N/A'}</span>
+                        </div>
                         
                         <div class="relative z-10">
                             <h2 class="text-4xl font-black text-white leading-tight mb-1">${imp.name}</h2>
@@ -382,7 +398,7 @@
                             <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                 <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Compatibilidade</label>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-lg font-black ${statusColor.split(' ')[0]}">MRI ${imp.status}</span>
+                                    <span class="text-lg font-black ${statusColor}">MRI ${imp.status}</span>
                                 </div>
                             </div>
                              <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -410,8 +426,8 @@
                         ` : ''}
 
                         <div class="flex items-center justify-between pt-6 border-t border-slate-100 mt-2">
-                             <div class="text-xs text-slate-400">
-                                <span class="font-bold">REF:</span> ${imp.modelRef || '---'}
+                             <div class="text-xs text-slate-400 font-bold uppercase tracking-widest">
+                                Hospital Database
                              </div>
                              <span class="text-[10px] font-bold uppercase bg-slate-100 text-slate-500 px-3 py-1 rounded-full">${imp.category}</span>
                         </div>
@@ -434,8 +450,6 @@
                 reader.readAsDataURL(e.target.files[0]);
             }
         };
-
-        searchInput.oninput = handleSearch;
     </script>
 </body>
 </html>
