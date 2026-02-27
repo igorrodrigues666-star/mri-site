@@ -167,35 +167,63 @@ function hideAdminUI() {
 window.openDetailModal = (id) => {
     const imp = implants.find(i => i.id === id);
     if(!imp) return;
+    
     const statusClean = String(imp.status || "").toLowerCase();
     const statusColor = statusClean.includes('safe') ? 'text-emerald-600' : statusClean.includes('conditional') ? 'text-amber-600' : 'text-rose-600';
     
     document.getElementById('detailContent').innerHTML = `
         <div class="h-56 bg-sky-900 relative flex flex-col justify-end p-8">
             ${imp.image ? `<img src="${imp.image}" class="absolute inset-0 w-full h-full object-cover opacity-40">` : ''}
-            <button onclick="window.closeDetailModal()" class="absolute top-6 right-6 bg-white/20 p-2 rounded-full text-white">✕</button>
+            <button onclick="window.closeDetailModal()" class="absolute top-6 right-6 bg-white/20 p-2 rounded-full text-white hover:bg-white/40 transition-colors">✕</button>
             <div class="relative z-10">
-                <h2 class="text-4xl font-black text-white">${imp.name}</h2>
-                <p class="text-slate-200">${imp.manufacturer}</p>
+                <span class="text-[10px] font-bold uppercase text-sky-300 mb-2 block">${imp.category || 'Geral'}</span>
+                <h2 class="text-4xl font-black text-white leading-tight">${imp.name}</h2>
+                <p class="text-slate-200 font-medium">${imp.manufacturer}</p>
             </div>
         </div>
+
         <div class="p-8 space-y-6">
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-slate-50 p-4 rounded-2xl border">
-                    <label class="text-[10px] font-black text-slate-400 uppercase block">MRI Status</label>
-                    <span class="text-sm font-black ${statusColor}">MRI ${imp.status}</span>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">Status</label>
+                    <span class="text-xs font-black ${statusColor}">MRI ${imp.status}</span>
                 </div>
-                <div class="bg-slate-50 p-4 rounded-2xl border">
-                    <label class="text-[10px] font-black text-slate-400 uppercase block">Campo</label>
-                    <p class="text-slate-700 font-bold text-sm">${imp.fieldStrength || 'N/A'}</p>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">Campo</label>
+                    <p class="text-slate-700 font-bold text-xs">${imp.fieldStrength || 'N/A'}</p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">SAR</label>
+                    <p class="text-slate-700 font-bold text-xs">${imp.sarLimit || 'N/A'}</p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">Gradiente</label>
+                    <p class="text-slate-700 font-bold text-xs">${imp.gradientLimit || 'N/A'}</p>
                 </div>
             </div>
-            <div class="bg-sky-50 p-6 rounded-2xl border border-sky-100">
-                <label class="text-[10px] font-black text-sky-600 uppercase block mb-2">Condições Técnicas</label>
-                <p class="text-sm text-slate-700">${(imp.specificConditions || 'Sem condições específicas.').replace(/\n/g, '<br>')}</p>
+
+            <div class="bg-sky-50 p-6 rounded-3xl border border-sky-100">
+                <div class="flex items-center gap-2 mb-3 text-sky-600">
+                    <i data-lucide="info" class="w-4 h-4"></i>
+                    <label class="text-[10px] font-black uppercase tracking-wider">Notas e Condições</label>
+                </div>
+                <p class="text-sm text-slate-700 leading-relaxed">${(imp.specificConditions || 'Sem condições específicas registadas.').replace(/\n/g, '<br>')}</p>
             </div>
+
+            ${imp.docLink ? `
+                <a href="${imp.docLink}" target="_blank" class="flex items-center justify-between bg-slate-900 text-white p-5 rounded-2xl hover:bg-slate-800 transition-all group">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="file-text" class="text-sky-400"></i>
+                        <span class="text-sm font-bold">Documentação do Fabricante</span>
+                    </div>
+                    <i data-lucide="external-link" class="w-4 h-4 opacity-50 group-hover:opacity-100"></i>
+                </a>
+            ` : ''}
         </div>
     `;
+    
+    // Reinicializa os ícones da Lucide dentro do modal
+    lucide.createIcons();
     document.getElementById('detailModal').classList.replace('hidden', 'flex');
 };
 
